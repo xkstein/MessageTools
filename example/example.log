@@ -1,0 +1,4 @@
+DEBUG:msg_tools.message:request
+DEBUG:msg_tools.message:Closing socket at ('127.0.0.1', 65298)
+DEBUG:msg_tools.message:request
+DEBUG:msg_tools.message:Closing socket at ('127.0.0.1', 65299)
