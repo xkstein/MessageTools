@@ -32,12 +32,24 @@ class Message:
     @staticmethod
     def encode(data):
         packed_data = pickle.dumps(data, 0)
+        assert len(packed_data) > 0, 'Packed has 0 length!'
         packed_data_length = struct.pack(">L", len(packed_data))
         return packed_data_length + packed_data
 
     @staticmethod
     def decode(data):
         return pickle.loads(data)
+
+    @staticmethod
+    def get_data_length(data):
+        '''This reads and trims off the message header'''
+        pre_header_size = struct.calcsize(">L")
+        if len(data) < pre_header_size: return data, None
+
+        packed_data_length = data[:pre_header_size]
+        data = data[pre_header_size:]
+        data_length = struct.unpack(">L", packed_data_length)[0]
+        return data, data_length
 
     def handle_connection(self, mask):
         if mask & selectors.EVENT_READ:
@@ -66,6 +78,7 @@ class Message:
         recv_data = self.sock.recv(4096)
 
         if recv_data:
+            self.logger.info(f'Data recieved: {recv_data}')
             self.inb += recv_data
             self.reading = True
 
@@ -74,12 +87,17 @@ class Message:
         self._data_length = None
         self.inb = b""
         self.in_data = None
+        self.logger.info(f'Input buffers cleared')
 
     def _queue_response(self):
         if self.response:
+            self.logger.info(f'Response Queued: {self.response}')
             self.outb = self.encode(self.response)
             self._response_queued = True
             self.response = None
+        elif self.response is not None:
+            self.logger.info(f'No response found, sending return character')
+            self.response = '\n'
 
     def _write(self):
         '''Writes data to socket'''
@@ -88,6 +106,7 @@ class Message:
         except BlockingIOError:
             pass
         else:
+            self.logger.info(f'Data Written: {self.outb[:sent]}')
             self.outb = self.outb[sent:]
             if not self.outb:
                 self._response_queued = False

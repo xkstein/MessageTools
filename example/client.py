@@ -4,7 +4,7 @@ from msg_tools import ClientMessage
 
 sel = selectors.DefaultSelector()
 
-HOST=''
+HOST='10.192.14.68'
 PORT=8485
 
 addr = (HOST, PORT)

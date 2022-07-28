@@ -10,6 +10,7 @@ import pickle
 class ClientMessage(Message):
     def __init__(self, selector, sock, addr, request=None):
         super().__init__(selector, sock, addr)
+        self.logger.debug(f'Instance Created with request: {request}')
         self.response = request
     
     def write(self):
@@ -21,6 +22,7 @@ class ClientMessage(Message):
         self._write()
 
         if not self.outb:
+            self.logger.debug(f'Writing Complete')
             self._response_queued = False
 
     def read(self):
@@ -28,19 +30,16 @@ class ClientMessage(Message):
         self._read()
 
         if self._data_length is None:
-            pre_header_size = struct.calcsize(">L")
-            if len(self.inb) < pre_header_size: return
-
-            packed_data_length = self.inb[:pre_header_size]
-            self.inb = self.inb[pre_header_size:]
-            self._data_length = struct.unpack(">L", packed_data_length)[0]
+            self.inb, self._data_length = self.get_data_length(self.inb)
+            self.logger.debug(f'Package Length: {self._data_length}')
 
         if self._data_length is not None:
+            self.logger.debug(f'Data Recieved {len(self.inb)}')
             if len(self.inb) >= self._data_length:
                 self.in_data = self.decode(self.inb[:self._data_length])
 
         if self.in_data is not None:
-            self.logger.debug(f'Data Recieved: {self.in_data}')
+            self.logger.debug(f'Decoded Package: {self.in_data}')
             self.logger.debug('Processing Response')
             self.process_response()
             self._close()

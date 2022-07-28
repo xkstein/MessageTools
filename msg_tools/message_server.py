@@ -1,5 +1,5 @@
 '''
-So the server is meant to be queried mainly, so it exits on write
+So the server is meant to be queried, so it exits on write
 '''
 from .message import Message
 import selectors
@@ -17,6 +17,7 @@ class ServerMessage(Message):
         self._write()
 
         if not self.outb:
+            self.logger.debug(f'Writing Complete')
             self.sock.close()
             self._close()
             self._response_queued = False
@@ -26,17 +27,15 @@ class ServerMessage(Message):
         self._read()
 
         if self._data_length is None:
-            pre_header_size = struct.calcsize(">L")
-            if len(self.inb) < pre_header_size: return
-
-            packed_data_length = self.inb[:pre_header_size]
-            self.inb = self.inb[pre_header_size:]
-            self._data_length = struct.unpack(">L", packed_data_length)[0]
+            self.inb, self._data_length = self.get_data_length(self.inb)
+            self.logger.debug(f'Package Length: {self._data_length}')
 
         if self._data_length is not None:
+            self.logger.debug(f'Data Recieved: {len(self.inb)}')
             if len(self.inb) >= self._data_length:
                 self.in_data = self.decode(self.inb[:self._data_length])
 
         if self.in_data is not None:
-            self.logger.debug(self.in_data)
+            self.logger.debug(f'Decoded Package: {self.in_data}')
+            self.logger.debug(f'Processing Response')
             self.process_response()
